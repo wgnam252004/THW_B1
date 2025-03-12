@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khảo sát</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; background: #f4f4f4; }
+        h2 { text-align: center; }
+        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        .hidden { display: none; }
+        .question { margin-bottom: 15px; padding: 10px; background: #e9ecef; border-radius: 5px; }
+        button { background: #007bff; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 5px; width: 100%; }
+        button:hover { background: #0056b3; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
+        .error { color: red; font-size: 14px; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container" id="step1">
+        <h2>Nhập thông tin cá nhân</h2>
+        <div class="form-group">
+            <label for="name">Họ và tên</label>
+            <input type="text" id="name" placeholder="Nhập họ và tên" oninput="validateInput('name', 'nameError')">
+            <p class="error" id="nameError">Vui lòng nhập họ và tên</p>
+        </div>
+        <div class="form-group">
+            <label for="dob">Ngày sinh</label>
+            <input type="text" id="dob" placeholder="dd/mm/yyyy" oninput="validateDob()" pattern="\d{2}/\d{2}/\d{4}">
+            <p class="error" id="dobError">Vui lòng nhập đúng định dạng dd/mm/yyyy</p>
+
+        </div>
+        <div class="form-group">
+            <label for="cccd">CCCD</label>
+            <input type="text" id="cccd" placeholder="Nhập số CCCD" oninput="validateCCCD()">
+            <p class="error" id="cccdError">CCCD phải là 12 chữ số</p>
+        </div>
+        <div class="form-group">
+            <label for="address">Địa chỉ</label>
+            <input type="text" id="address" placeholder="Nhập địa chỉ" oninput="validateInput('address', 'addressError')">
+            <p class="error" id="addressError">Vui lòng nhập địa chỉ</p>
+        </div>
+        <button onclick="validateForm()">Tiếp tục</button>
+    </div>
+    
+    <div class="container hidden" id="step2">
+        <h2>Khảo sát</h2>
+        <div id="questions"></div>
+        <button onclick="submitSurvey()">Nộp bài</button>
+    </div>
+    
+    <div class="container hidden" id="result">
+        <h2>Kết quả khảo sát</h2>
+        <p id="score"></p>
+        <table border="1" width="100%">
+            <thead>
+                <tr>
+                    <th>Câu hỏi</th>
+                    <th>Đáp án của bạn</th>
+                    <th>Kết quả</th>
+                </tr>
+            </thead>
+            <tbody id="resultTable"></tbody>
+        </table>
+    </div>
+    
+    <script>
+        const questions = [
+            // Nhóm 1: Đúng/Sai
+            { type: "trueFalse", text: "Câu hỏi 1: Nước Việt Nam có hình chữ S?", answer: "Đúng" },
+            { type: "trueFalse", text: "Câu hỏi 2: Trái Đất quay quanh Mặt Trời?", answer: "Đúng" },
+            { type: "trueFalse", text: "Câu hỏi 3: Nước biển có màu đỏ?", answer: "Sai" },
+            { type: "trueFalse", text: "Câu hỏi 4: Hà Nội là thủ đô của Việt Nam?", answer: "Đúng" },
+            { type: "trueFalse", text: "Câu hỏi 5: Nước ngọt có vị mặn?", answer: "Sai" },
+            { type: "trueFalse", text: "Câu hỏi 6: Cá sống được trên cạn?", answer: "Sai" },
+            { type: "trueFalse", text: "Câu hỏi 7: Con người có thể hít thở dưới nước mà không cần thiết bị hỗ trợ?", answer: "Sai" },
+            { type: "trueFalse", text: "Câu hỏi 8: Gấu Bắc Cực sống chủ yếu ở Nam Cực?", answer: "Sai" },
+            { type: "trueFalse", text: "Câu hỏi 9: Thực vật tạo ra oxy nhờ quá trình quang hợp?", answer: "Đúng" },
+            { type: "trueFalse", text: "Câu hỏi 10: Sư tử là loài động vật ăn cỏ?", answer: "Sai" },
+
+            // Nhóm 2: Chọn 1 trong 4 đáp án
+            { type: "singleChoice", text: "Câu hỏi 11: Đâu là quốc gia có dân số đông nhất thế giới?", options: ["Mỹ", "Ấn Độ", "Trung Quốc", "Nga"], answer: "Trung Quốc" },
+            { type: "singleChoice", text: "Câu hỏi 12: Ai là người phát minh ra bóng đèn?", options: ["Thomas Edison", "Albert Einstein", "Isaac Newton", "Nikola Tesla"], answer: "Thomas Edison" },
+            { type: "singleChoice", text: "Câu hỏi 13: Thủ đô của Thái Lan là gì?", options: ["Bangkok", "Jakarta", "Manila", "Kuala Lumpur"], answer: "Bangkok" },
+            { type: "singleChoice", text: "Câu hỏi 14: Kim loại nào dẫn điện tốt nhất?", options: ["Nhôm", "Sắt", "Đồng", "Bạc"], answer: "Bạc" },
+            { type: "singleChoice", text: "Câu hỏi 15: Đâu là hành tinh lớn nhất trong hệ Mặt Trời?", options: ["Sao Kim", "Sao Hỏa", "Sao Mộc", "Sao Thủy"], answer: "Sao Mộc" },
+            { type: "singleChoice", text: "Câu hỏi 16: Loại động vật nào là loài có vú?", options: ["Cá mập", "Cá voi", "Cá ngừ", "Cá sấu"], answer: "Cá voi" },
+            { type: "singleChoice", text: "Câu hỏi 17: Ai là tác giả của truyện 'Dế Mèn Phiêu Lưu Ký'?", options: ["Tô Hoài", "Nam Cao", "Ngô Tất Tố", "Nguyễn Nhật Ánh"], answer: "Tô Hoài" },
+            { type: "singleChoice", text: "Câu hỏi 18: Năm nào Việt Nam giành độc lập?", options: ["1945", "1954", "1975", "1986"], answer: "1945" },
+            { type: "singleChoice", text: "Câu hỏi 19: Châu nào có diện tích lớn nhất thế giới?", options: ["Châu Phi", "Châu Âu", "Châu Á", "Châu Mỹ"], answer: "Châu Á" },
+            { type: "singleChoice", text: "Câu hỏi 20: Đơn vị đo cường độ dòng điện là gì?", options: ["Vôn", "Ampe", "Oát", "Jun"], answer: "Ampe" },
+
+            // Nhóm 3: Chọn nhiều đáp án đúng
+            { type: "multiChoice", text: "Câu hỏi 21: Những động vật nào thuộc nhóm động vật có vú?", options: ["Cá voi", "Bò", "Cá mập", "Chó"], answer: ["Cá voi", "Bò", "Chó"] },
+            { type: "multiChoice", text: "Câu hỏi 22: Những phát minh nào dưới đây thuộc về Thomas Edison?", options: ["Bóng đèn", "Điện thoại", "Máy hát", "Pin năng lượng mặt trời"], answer: ["Bóng đèn", "Máy hát"] },
+            { type: "multiChoice", text: "Câu hỏi 23: Những quốc gia nào thuộc Đông Nam Á?", options: ["Việt Nam", "Trung Quốc", "Thái Lan", "Campuchia"], answer: ["Việt Nam", "Thái Lan", "Campuchia"] },
+            { type: "multiChoice", text: "Câu hỏi 24: Những ngôn ngữ nào được sử dụng phổ biến trên thế giới?", options: ["Tiếng Anh", "Tiếng Pháp", "Tiếng Nhật", "Tiếng Latin"], answer: ["Tiếng Anh", "Tiếng Pháp"] },
+            { type: "multiChoice", text: "Câu hỏi 25: Những nguồn năng lượng nào là năng lượng tái tạo?", options: ["Năng lượng mặt trời", "Than đá", "Gió", "Thủy điện"], answer: ["Năng lượng mặt trời", "Gió", "Thủy điện"] },
+            { type: "multiChoice", text: "Câu hỏi 26: Các hành tinh nào nằm trong hệ Mặt Trời?", options: ["Sao Kim", "Sao Mộc", "Sao Hỏa", "Sao Thiên Vương"], answer: ["Sao Kim", "Sao Mộc", "Sao Hỏa", "Sao Thiên Vương"] },
+            { type: "multiChoice", text: "Câu hỏi 27: Những động vật nào là động vật ăn thịt?", options: ["Hổ", "Sư tử", "Hươu", "Cá sấu"], answer: ["Hổ", "Sư tử", "Cá sấu"] },
+            { type: "multiChoice", text: "Câu hỏi 28: Các hình thức vận tải nào sử dụng năng lượng điện?", options: ["Tàu điện", "Xe đạp", "Xe buýt điện", "Xe máy xăng"], answer: ["Tàu điện", "Xe buýt điện"] },
+            { type: "multiChoice", text: "Câu hỏi 29: Những loại trái cây nào thuộc họ cam quýt?", options: ["Cam", "Bưởi", "Ổi", "Quýt"], answer: ["Cam", "Bưởi", "Quýt"] },
+            { type: "multiChoice", text: "Câu hỏi 30: Những yếu tố nào cần thiết cho quá trình quang hợp?", options: ["Ánh sáng", "Nước", "Đất", "Carbon dioxide"], answer: ["Ánh sáng", "Nước", "Carbon dioxide"] },
+
+            // Nhóm 4: Tự luận
+            { type: "text", text: "Câu hỏi 31: Hãy mô tả về bản thân bạn?" },
+            { type: "text", text: "Câu hỏi 32: Bạn nghĩ thế nào về vai trò của giáo dục trong cuộc sống?" },
+            { type: "text", text: "Câu hỏi 33: Bạn hãy kể về một cuốn sách mà bạn yêu thích?" },
+            { type: "text", text: "Câu hỏi 34: Theo bạn, thế nào là một công dân tốt?" },
+            { type: "text", text: "Câu hỏi 35: Bạn hãy chia sẻ về một trải nghiệm đáng nhớ của bạn?" },
+            { type: "text", text: "Câu hỏi 36: Bạn nghĩ gì về tầm quan trọng của môi trường?" },
+            { type: "text", text: "Câu hỏi 37: Bạn hãy nêu ý kiến của mình về sự phát triển của công nghệ hiện nay?" },
+            { type: "text", text: "Câu hỏi 38: Hãy mô tả một ngày làm việc lý tưởng của bạn?" },
+            { type: "text", text: "Câu hỏi 39: Bạn nghĩ sao về vai trò của thể thao trong đời sống?" },
+            { type: "text", text: "Câu hỏi 40: Bạn có lời khuyên nào dành cho thế hệ trẻ trong tương lai?" },
+        ];
+        
+        function validateInput(fieldId, errorId) {
+            let value = document.getElementById(fieldId).value.trim();
+            document.getElementById(errorId).style.display = value ? 'none' : 'block';
+        }
+
+        function validateDob() {
+            let dob = document.getElementById("dob").value.trim();
+            let dobRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/; 
+            document.getElementById("dobError").style.display = dobRegex.test(dob) ? "none" : "block";
+        }
+
+        
+        function validateCCCD() {
+            let cccd = document.getElementById("cccd").value.trim();
+            let cccdRegex = /^\d{12}$/;
+            document.getElementById("cccdError").style.display = cccdRegex.test(cccd) ? 'none' : 'block';
+        }
+        
+        function validateForm() {
+            validateInput('name', 'nameError');
+            validateInput('dob', 'dobError');
+            validateCCCD();
+            validateInput('address', 'addressError');
+            
+            let errors = document.querySelectorAll('.error');
+            let hasError = Array.from(errors).some(error => error.style.display === 'block');
+            
+            if (!hasError) {
+                nextStep();
+            }
+        }
+        
+        function nextStep() {
+            document.getElementById("step1").classList.add("hidden");
+            document.getElementById("step2").classList.remove("hidden");
+            const questionsDiv = document.getElementById("questions");
+            
+            questions.forEach((q, index) => {
+                let div = document.createElement("div");
+                div.className = "question";
+                div.innerHTML = `<p><strong>${q.text}</strong></p>`;
+                
+                if (q.type === "trueFalse") {
+                    div.innerHTML += `<input type="radio" name="q${index}" value="Đúng"> Đúng `;
+                    div.innerHTML += `<input type="radio" name="q${index}" value="Sai"> Sai `;
+                }
+                
+                if (q.type === "singleChoice") {
+                    q.options.forEach(opt => {
+                        div.innerHTML += `<input type="radio" name="q${index}" value="${opt}"> ${opt} <br>`;
+                    });
+                }
+
+                if (q.type === "multiChoice") {
+            q.options.forEach(opt => {
+                div.innerHTML += `<input type="checkbox" name="q${index}" value="${opt}"> ${opt} <br>`;
+            });
+        }
+                
+                if (q.type === "text") {
+                    div.innerHTML += `<textarea name="q${index}" rows="3" cols="50"></textarea>`;
+                }
+                
+                questionsDiv.appendChild(div);
+            });
+        }
+        
+        function submitSurvey() {
+    document.getElementById("step2").classList.add("hidden");
+    document.getElementById("result").classList.remove("hidden");
+
+    let correct = 0;
+    let tableBody = document.getElementById("resultTable");
+    tableBody.innerHTML = ""; // Xóa dữ liệu cũ nếu có
+
+    questions.forEach((q, index) => {
+        let userAnswer = "";
+        let isCorrect = "Sai"; // Mặc định là sai
+
+        if (q.type === "trueFalse" || q.type === "singleChoice") {
+            let selected = document.querySelector(`input[name='q${index}']:checked`);
+            if (selected) {
+                userAnswer = selected.value;
+                if (userAnswer === q.answer) {
+                    isCorrect = "Đúng";
+                    correct++;
+                }
+            }
+        }
+
+        if (q.type === "multiChoice") {
+            let selected = Array.from(document.querySelectorAll(`input[name='q${index}']:checked`)).map(el => el.value);
+            userAnswer = selected.join(", ");
+            if (JSON.stringify(selected.sort()) === JSON.stringify(q.answer.sort())) {
+                isCorrect = "Đúng";
+                correct++;
+            }
+        }
+
+        if (q.type === "text") {
+            let textAnswer = document.querySelector(`textarea[name='q${index}']`);
+            userAnswer = textAnswer ? textAnswer.value : "";
+            isCorrect = "Chưa chấm"; // Câu tự luận không có đáp án đúng/sai
+        }
+
+        // Thêm dòng vào bảng
+        let row = `<tr>
+            <td>Câu ${index + 1}</td>
+            <td>${userAnswer || "Chưa trả lời"}</td>
+            <td>${isCorrect}</td>
+        </tr>`;
+        tableBody.innerHTML += row;
+    });
+
+    document.getElementById("score").innerText = `Bạn trả lời đúng ${correct}/30 câu (không tính câu hỏi tự luận).`;
+}
+    </script>
+</body>
+</html>
